@@ -8,7 +8,7 @@ The tool does not automatically open URLs, render remote HTML content, or execut
 
 ## Project status
 
-Current scope complete (`v0.1.0`).
+Current scope complete (`v1.0.0`).
 
 The implemented workflow has been verified with 83 unit tests.
 
@@ -369,6 +369,18 @@ Registration information describes domain or IP registration and allocation data
 
 It does not by itself identify the actual sender or prove malicious intent.
 
+## Disclaimer
+
+This tool is provided for defensive security analysis, research, and educational purposes.
+
+The analysis results are based on information contained in the supplied email file and, when explicitly enabled, external registration data such as RDAP or WHOIS records.
+
+The tool does not guarantee that its results are complete, accurate, or sufficient to determine whether an email is legitimate or malicious.
+
+Users are responsible for reviewing the generated results and deciding how to use them.
+
+The author and KINOTO RESEARCH are not responsible for any loss, damage, or other consequences arising from the use of this software or its analysis results.
+
 ## Defensive-use notice
 
 This project is intended for defensive security analysis, evidence organization, research, and education.
@@ -391,6 +403,6 @@ Question or operational challenge
 
 ## License
 
-A license has not yet been selected.
+This project is licensed under the MIT License.
 
-Until a license is added, the repository should not be treated as granting general permission to copy, modify, or redistribute the source code.
+See the `LICENSE` file for details.
