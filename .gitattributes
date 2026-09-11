@@ -1,0 +1,15 @@
+# Default text handling
+* text=auto
+
+# Source code and documentation: LF
+.gitattributes text eol=lf
+*.py   text eol=lf
+*.md   text eol=lf
+*.toml text eol=lf
+*.json text eol=lf
+*.txt  text eol=lf
+
+# Windows scripts: CRLF
+*.ps1  text eol=crlf
+*.bat  text eol=crlf
+*.cmd  text eol=crlf
