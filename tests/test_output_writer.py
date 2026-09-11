@@ -72,6 +72,40 @@ SAMPLE_ANALYSIS = {
             },
         },
     },
+    "rdap_candidates": {
+        "domain_candidates": {
+            "sender_domains": [
+                "example.test",
+            ],
+            "link_hosts": [
+                "example.test",
+            ],
+        },
+        "ip_candidates": [
+            "192.0.2.44",
+        ],
+        "lookup_scope": {
+            "domain_rdap": {
+                "intended_fields": [
+                    "registrar",
+                    "registration_events",
+                    "statuses",
+                    "nameservers",
+                ]
+            },
+            "ip_rdap": {
+                "intended_fields": [
+                    "network_name",
+                    "network_range",
+                    "cidr",
+                    "rir",
+                    "allocation_organization",
+                    "abuse_contact",
+                ]
+            },
+        },
+        "network_access_performed": False,
+    },
 }
 
 
@@ -111,25 +145,76 @@ class OutputWriterTests(unittest.TestCase):
                 case_name="test-case",
             )
 
-            paths = [
+            expected_keys = (
+                "hash_record",
+                "header_record",
+                "url_record",
+                "indicator_record",
+                "rdap_candidate_record",
+                "report",
+            )
+
+            for key in expected_keys:
+                self.assertIn(
+                    key,
+                    result,
+                )
+
+                self.assertTrue(
+                    Path(
+                        result[key]
+                    ).exists()
+                )
+
+    def test_output_directories_are_correct(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            result = save_analysis_outputs(
+                analysis=SAMPLE_ANALYSIS,
+                investigation_root=temp_dir,
+                case_name="test-case",
+            )
+
+            self.assertEqual(
                 Path(
                     result["hash_record"]
-                ),
+                ).parent.name,
+                "02_Hash_Records",
+            )
+
+            self.assertEqual(
                 Path(
                     result["header_record"]
-                ),
+                ).parent.name,
+                "03_Header_Text",
+            )
+
+            self.assertEqual(
                 Path(
                     result["url_record"]
-                ),
+                ).parent.name,
+                "03_Header_Text",
+            )
+
+            self.assertEqual(
                 Path(
                     result["indicator_record"]
-                ),
-            ]
+                ).parent.name,
+                "03_Header_Text",
+            )
 
-            for path in paths:
-                self.assertTrue(
-                    path.exists()
-                )
+            self.assertEqual(
+                Path(
+                    result["rdap_candidate_record"]
+                ).parent.name,
+                "04_RDAP",
+            )
+
+            self.assertEqual(
+                Path(
+                    result["report"]
+                ).parent.name,
+                "05_Report",
+            )
 
     def test_absolute_source_path_is_not_written_to_json(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -139,11 +224,14 @@ class OutputWriterTests(unittest.TestCase):
                 case_name="test-case",
             )
 
-            for key in (
+            json_keys = (
                 "header_record",
                 "url_record",
                 "indicator_record",
-            ):
+                "rdap_candidate_record",
+            )
+
+            for key in json_keys:
                 content = Path(
                     result[key]
                 ).read_text(
@@ -154,6 +242,25 @@ class OutputWriterTests(unittest.TestCase):
                     r"C:\Sensitive\Original",
                     content,
                 )
+
+    def test_absolute_source_path_is_not_written_to_report(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            result = save_analysis_outputs(
+                analysis=SAMPLE_ANALYSIS,
+                investigation_root=temp_dir,
+                case_name="test-case",
+            )
+
+            content = Path(
+                result["report"]
+            ).read_text(
+                encoding="utf-8",
+            )
+
+            self.assertNotIn(
+                r"C:\Sensitive\Original",
+                content,
+            )
 
     def test_existing_output_is_not_overwritten_by_default(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -189,7 +296,37 @@ class OutputWriterTests(unittest.TestCase):
 
             self.assertTrue(
                 Path(
+                    result["hash_record"]
+                ).exists()
+            )
+
+            self.assertTrue(
+                Path(
+                    result["header_record"]
+                ).exists()
+            )
+
+            self.assertTrue(
+                Path(
+                    result["url_record"]
+                ).exists()
+            )
+
+            self.assertTrue(
+                Path(
                     result["indicator_record"]
+                ).exists()
+            )
+
+            self.assertTrue(
+                Path(
+                    result["rdap_candidate_record"]
+                ).exists()
+            )
+
+            self.assertTrue(
+                Path(
+                    result["report"]
                 ).exists()
             )
 
@@ -217,6 +354,15 @@ class OutputWriterTests(unittest.TestCase):
                 content,
             )
 
+            parsed = json.loads(
+                content
+            )
+
+            self.assertEqual(
+                parsed["url_count"],
+                1,
+            )
+
     def test_indicator_output_is_structured(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             result = save_analysis_outputs(
@@ -240,13 +386,63 @@ class OutputWriterTests(unittest.TestCase):
             ]
 
             self.assertEqual(
-                indicators["authentication"]["dkim"]["result"],
+                indicators[
+                    "authentication"
+                ]["dkim"]["result"],
                 "pass",
             )
 
             self.assertEqual(
-                indicators["ip_addresses"]["spf_client_ip"],
+                indicators[
+                    "ip_addresses"
+                ]["spf_client_ip"],
                 "192.0.2.44",
+            )
+
+    def test_rdap_candidate_output_is_structured(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            result = save_analysis_outputs(
+                analysis=SAMPLE_ANALYSIS,
+                investigation_root=temp_dir,
+                case_name="test-case",
+            )
+
+            content = Path(
+                result["rdap_candidate_record"]
+            ).read_text(
+                encoding="utf-8",
+            )
+
+            parsed = json.loads(
+                content
+            )
+
+            rdap_candidates = parsed[
+                "rdap_candidates"
+            ]
+
+            self.assertEqual(
+                rdap_candidates[
+                    "domain_candidates"
+                ]["sender_domains"],
+                [
+                    "example.test",
+                ],
+            )
+
+            self.assertEqual(
+                rdap_candidates[
+                    "ip_candidates"
+                ],
+                [
+                    "192.0.2.44",
+                ],
+            )
+
+            self.assertFalse(
+                rdap_candidates[
+                    "network_access_performed"
+                ]
             )
 
 

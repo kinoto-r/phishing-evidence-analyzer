@@ -1,7 +1,8 @@
 """Core offline analysis functions for suspicious email files.
 
 This module performs local-only parsing.
-It does not access URLs, perform DNS lookups, or contact external services.
+It does not access URLs, perform DNS lookups, RDAP queries,
+or contact external services.
 """
 
 from __future__ import annotations
@@ -14,6 +15,9 @@ from typing import Any
 
 from phishing_evidence_analyzer.indicator_parser import (
     build_structured_indicators,
+)
+from phishing_evidence_analyzer.rdap_candidates import (
+    build_rdap_candidates,
 )
 from phishing_evidence_analyzer.url_extractor import (
     build_defanged_url_records,
@@ -46,18 +50,12 @@ def calculate_sha256(
 
     sha256 = hashlib.sha256()
 
-    with file_path.open(
-        "rb"
-    ) as file:
+    with file_path.open("rb") as file:
         for chunk in iter(
-            lambda: file.read(
-                1024 * 1024
-            ),
+            lambda: file.read(1024 * 1024),
             b"",
         ):
-            sha256.update(
-                chunk
-            )
+            sha256.update(chunk)
 
     return sha256.hexdigest().upper()
 
@@ -87,25 +85,17 @@ def analyze_eml(
         )
 
     file_size = path.stat().st_size
-    sha256 = calculate_sha256(
-        path
-    )
+    sha256 = calculate_sha256(path)
 
-    with path.open(
-        "rb"
-    ) as file:
+    with path.open("rb") as file:
         message = BytesParser(
             policy=policy.default
-        ).parse(
-            file
-        )
+        ).parse(file)
 
     headers: dict[str, Any] = {}
 
     for header_name in SINGLE_VALUE_HEADERS:
-        value = message.get(
-            header_name
-        )
+        value = message.get(header_name)
 
         headers[header_name] = (
             str(value)
@@ -133,6 +123,10 @@ def analyze_eml(
         urls,
     )
 
+    rdap_candidates = build_rdap_candidates(
+        indicators
+    )
+
     return {
         "file_name": path.name,
         "file_path": str(path),
@@ -141,4 +135,5 @@ def analyze_eml(
         "headers": headers,
         "urls": urls,
         "indicators": indicators,
+        "rdap_candidates": rdap_candidates,
     }

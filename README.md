@@ -58,7 +58,7 @@ Real suspicious email files should be stored outside this repository.
 Example:
 
 ```text
-C:\Security-Investigation\
+C:\Phishing-Investigation\
 ├─ 01_Original_EML\
 ├─ 02_Hash_Records\
 ├─ 03_Header_Text\
