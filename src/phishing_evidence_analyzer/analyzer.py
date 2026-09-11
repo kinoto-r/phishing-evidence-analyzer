@@ -12,6 +12,9 @@ from email.parser import BytesParser
 from pathlib import Path
 from typing import Any
 
+from phishing_evidence_analyzer.indicator_parser import (
+    build_structured_indicators,
+)
 from phishing_evidence_analyzer.url_extractor import (
     build_defanged_url_records,
 )
@@ -36,29 +39,37 @@ MULTI_VALUE_HEADERS = (
 )
 
 
-def calculate_sha256(file_path: Path) -> str:
+def calculate_sha256(
+    file_path: Path,
+) -> str:
     """Calculate the SHA-256 hash of a file without modifying it."""
 
     sha256 = hashlib.sha256()
 
-    with file_path.open("rb") as file:
+    with file_path.open(
+        "rb"
+    ) as file:
         for chunk in iter(
-            lambda: file.read(1024 * 1024),
+            lambda: file.read(
+                1024 * 1024
+            ),
             b"",
         ):
-            sha256.update(chunk)
+            sha256.update(
+                chunk
+            )
 
     return sha256.hexdigest().upper()
 
 
-def analyze_eml(file_path: str | Path) -> dict[str, Any]:
-    """Read and parse an EML file locally.
+def analyze_eml(
+    file_path: str | Path,
+) -> dict[str, Any]:
+    """Read and parse an EML file locally."""
 
-    The source file is opened in binary read-only mode.
-    No external network access is performed.
-    """
-
-    path = Path(file_path).expanduser().resolve()
+    path = Path(
+        file_path
+    ).expanduser().resolve()
 
     if not path.exists():
         raise FileNotFoundError(
@@ -76,17 +87,25 @@ def analyze_eml(file_path: str | Path) -> dict[str, Any]:
         )
 
     file_size = path.stat().st_size
-    sha256 = calculate_sha256(path)
+    sha256 = calculate_sha256(
+        path
+    )
 
-    with path.open("rb") as file:
+    with path.open(
+        "rb"
+    ) as file:
         message = BytesParser(
             policy=policy.default
-        ).parse(file)
+        ).parse(
+            file
+        )
 
     headers: dict[str, Any] = {}
 
     for header_name in SINGLE_VALUE_HEADERS:
-        value = message.get(header_name)
+        value = message.get(
+            header_name
+        )
 
         headers[header_name] = (
             str(value)
@@ -109,6 +128,11 @@ def analyze_eml(file_path: str | Path) -> dict[str, Any]:
         message
     )
 
+    indicators = build_structured_indicators(
+        headers,
+        urls,
+    )
+
     return {
         "file_name": path.name,
         "file_path": str(path),
@@ -116,4 +140,5 @@ def analyze_eml(file_path: str | Path) -> dict[str, Any]:
         "sha256": sha256,
         "headers": headers,
         "urls": urls,
+        "indicators": indicators,
     }

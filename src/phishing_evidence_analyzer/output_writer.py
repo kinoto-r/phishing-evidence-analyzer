@@ -1,8 +1,4 @@
-"""Safe output functions for Phishing Evidence Analyzer.
-
-This module writes locally generated analysis results.
-It does not perform network access or modify source email evidence.
-"""
+"""Safe output functions for Phishing Evidence Analyzer."""
 
 from __future__ import annotations
 
@@ -36,7 +32,10 @@ def validate_case_name(
             "periods, underscores, and hyphens."
         )
 
-    if case_name in {".", ".."}:
+    if case_name in {
+        ".",
+        "..",
+    }:
         raise ValueError(
             "Invalid case name."
         )
@@ -107,14 +106,16 @@ def build_hash_record(
         "",
     ]
 
-    return "\n".join(lines)
+    return "\n".join(
+        lines
+    )
 
 
 def build_header_record(
     analysis: dict[str, Any],
     recorded_at_utc: str,
 ) -> dict[str, Any]:
-    """Build structured header output without local absolute paths."""
+    """Build structured header output without local paths."""
 
     return {
         "schema_version": "1.0",
@@ -132,7 +133,7 @@ def build_url_record(
     analysis: dict[str, Any],
     recorded_at_utc: str,
 ) -> dict[str, Any]:
-    """Build safe URL indicator output using defanged URLs only."""
+    """Build safe URL indicator output."""
 
     return {
         "schema_version": "1.0",
@@ -148,6 +149,23 @@ def build_url_record(
     }
 
 
+def build_indicator_record(
+    analysis: dict[str, Any],
+    recorded_at_utc: str,
+) -> dict[str, Any]:
+    """Build normalized structured indicator output."""
+
+    return {
+        "schema_version": "1.0",
+        "recorded_at_utc": recorded_at_utc,
+        "source": {
+            "file_name": analysis["file_name"],
+            "sha256": analysis["sha256"],
+        },
+        "indicators": analysis["indicators"],
+    }
+
+
 def save_analysis_outputs(
     analysis: dict[str, Any],
     investigation_root: str | Path,
@@ -155,7 +173,7 @@ def save_analysis_outputs(
     *,
     overwrite: bool = False,
 ) -> dict[str, str]:
-    """Save local hash, header, and defanged URL records."""
+    """Save all locally generated analysis records."""
 
     safe_case_name = validate_case_name(
         case_name
@@ -166,11 +184,13 @@ def save_analysis_outputs(
     ).expanduser().resolve()
 
     hash_directory = (
-        root / "02_Hash_Records"
+        root
+        / "02_Hash_Records"
     )
 
     header_directory = (
-        root / "03_Header_Text"
+        root
+        / "03_Header_Text"
     )
 
     hash_path = (
@@ -188,10 +208,16 @@ def save_analysis_outputs(
         / f"{safe_case_name}_urls.json"
     )
 
+    indicator_path = (
+        header_directory
+        / f"{safe_case_name}_indicators.json"
+    )
+
     output_paths = [
         hash_path,
         header_path,
         url_path,
+        indicator_path,
     ]
 
     ensure_output_paths_available(
@@ -224,6 +250,15 @@ def save_analysis_outputs(
         indent=2,
     ) + "\n"
 
+    indicator_content = json.dumps(
+        build_indicator_record(
+            analysis,
+            recorded_at_utc,
+        ),
+        ensure_ascii=False,
+        indent=2,
+    ) + "\n"
+
     write_text_file(
         hash_path,
         hash_content,
@@ -239,6 +274,11 @@ def save_analysis_outputs(
         url_content,
     )
 
+    write_text_file(
+        indicator_path,
+        indicator_content,
+    )
+
     return {
         "hash_record": str(
             hash_path
@@ -248,5 +288,8 @@ def save_analysis_outputs(
         ),
         "url_record": str(
             url_path
+        ),
+        "indicator_record": str(
+            indicator_path
         ),
     }

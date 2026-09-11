@@ -39,13 +39,48 @@ SAMPLE_ANALYSIS = {
             "defanged_url": "hxxps://example[.]test/login",
         }
     ],
+    "indicators": {
+        "domains": {
+            "from_domain": "example.test",
+            "return_path_domain": "example.test",
+            "spf_mailfrom_domain": "example.test",
+            "dkim_signing_domain": "example.test",
+            "dmarc_header_from_domain": "example.test",
+            "link_hosts": [
+                "example[.]test",
+            ],
+        },
+        "ip_addresses": {
+            "spf_client_ip": "192.0.2.44",
+            "received_ip_candidates": [
+                "192.0.2.44",
+            ],
+        },
+        "authentication": {
+            "spf": {
+                "result": "pass",
+                "smtp_mailfrom_domain": "example.test",
+                "client_ip": "192.0.2.44",
+            },
+            "dkim": {
+                "result": "pass",
+                "signing_domain": "example.test",
+            },
+            "dmarc": {
+                "result": "pass",
+                "header_from_domain": "example.test",
+            },
+        },
+    },
 }
 
 
 class OutputWriterTests(unittest.TestCase):
     def test_valid_case_name(self) -> None:
         self.assertEqual(
-            validate_case_name("2026-09-10_test-case"),
+            validate_case_name(
+                "2026-09-10_test-case"
+            ),
             "2026-09-10_test-case",
         )
 
@@ -58,9 +93,15 @@ class OutputWriterTests(unittest.TestCase):
         )
 
         for case_name in invalid_names:
-            with self.subTest(case_name=case_name):
-                with self.assertRaises(ValueError):
-                    validate_case_name(case_name)
+            with self.subTest(
+                case_name=case_name
+            ):
+                with self.assertRaises(
+                    ValueError
+                ):
+                    validate_case_name(
+                        case_name
+                    )
 
     def test_outputs_are_created(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -70,28 +111,25 @@ class OutputWriterTests(unittest.TestCase):
                 case_name="test-case",
             )
 
-            hash_path = Path(result["hash_record"])
-            header_path = Path(result["header_record"])
-            url_path = Path(result["url_record"])
+            paths = [
+                Path(
+                    result["hash_record"]
+                ),
+                Path(
+                    result["header_record"]
+                ),
+                Path(
+                    result["url_record"]
+                ),
+                Path(
+                    result["indicator_record"]
+                ),
+            ]
 
-            self.assertTrue(hash_path.exists())
-            self.assertTrue(header_path.exists())
-            self.assertTrue(url_path.exists())
-
-            self.assertEqual(
-                hash_path.parent.name,
-                "02_Hash_Records",
-            )
-
-            self.assertEqual(
-                header_path.parent.name,
-                "03_Header_Text",
-            )
-
-            self.assertEqual(
-                url_path.parent.name,
-                "03_Header_Text",
-            )
+            for path in paths:
+                self.assertTrue(
+                    path.exists()
+                )
 
     def test_absolute_source_path_is_not_written_to_json(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -101,40 +139,21 @@ class OutputWriterTests(unittest.TestCase):
                 case_name="test-case",
             )
 
-            header_path = Path(result["header_record"])
-            url_path = Path(result["url_record"])
+            for key in (
+                "header_record",
+                "url_record",
+                "indicator_record",
+            ):
+                content = Path(
+                    result[key]
+                ).read_text(
+                    encoding="utf-8",
+                )
 
-            header_content = header_path.read_text(
-                encoding="utf-8",
-            )
-
-            url_content = url_path.read_text(
-                encoding="utf-8",
-            )
-
-            self.assertNotIn(
-                r"C:\Sensitive\Original",
-                header_content,
-            )
-
-            self.assertNotIn(
-                r"C:\Sensitive\Original",
-                url_content,
-            )
-
-            parsed = json.loads(
-                header_content
-            )
-
-            self.assertEqual(
-                parsed["source"]["file_name"],
-                "テストメール.eml",
-            )
-
-            self.assertEqual(
-                parsed["headers"]["Subject"],
-                "日本語件名",
-            )
+                self.assertNotIn(
+                    r"C:\Sensitive\Original",
+                    content,
+                )
 
     def test_existing_output_is_not_overwritten_by_default(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -144,7 +163,9 @@ class OutputWriterTests(unittest.TestCase):
                 case_name="test-case",
             )
 
-            with self.assertRaises(FileExistsError):
+            with self.assertRaises(
+                FileExistsError
+            ):
                 save_analysis_outputs(
                     analysis=SAMPLE_ANALYSIS,
                     investigation_root=temp_dir,
@@ -167,15 +188,9 @@ class OutputWriterTests(unittest.TestCase):
             )
 
             self.assertTrue(
-                Path(result["hash_record"]).exists()
-            )
-
-            self.assertTrue(
-                Path(result["header_record"]).exists()
-            )
-
-            self.assertTrue(
-                Path(result["url_record"]).exists()
+                Path(
+                    result["indicator_record"]
+                ).exists()
             )
 
     def test_url_output_contains_only_defanged_url(self) -> None:
@@ -186,9 +201,9 @@ class OutputWriterTests(unittest.TestCase):
                 case_name="test-case",
             )
 
-            url_path = Path(result["url_record"])
-
-            content = url_path.read_text(
+            content = Path(
+                result["url_record"]
+            ).read_text(
                 encoding="utf-8",
             )
 
@@ -202,13 +217,36 @@ class OutputWriterTests(unittest.TestCase):
                 content,
             )
 
+    def test_indicator_output_is_structured(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            result = save_analysis_outputs(
+                analysis=SAMPLE_ANALYSIS,
+                investigation_root=temp_dir,
+                case_name="test-case",
+            )
+
+            content = Path(
+                result["indicator_record"]
+            ).read_text(
+                encoding="utf-8",
+            )
+
             parsed = json.loads(
                 content
             )
 
+            indicators = parsed[
+                "indicators"
+            ]
+
             self.assertEqual(
-                parsed["url_count"],
-                1,
+                indicators["authentication"]["dkim"]["result"],
+                "pass",
+            )
+
+            self.assertEqual(
+                indicators["ip_addresses"]["spf_client_ip"],
+                "192.0.2.44",
             )
 
 

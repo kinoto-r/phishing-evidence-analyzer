@@ -18,9 +18,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="phishing-evidence-analyzer",
         description=(
-            "Locally calculate SHA-256, extract selected headers, "
-            "and extract defanged URLs from an EML file "
-            "without network access."
+            "Perform local-only EML analysis including SHA-256, "
+            "headers, defanged URLs, and structured indicators."
         ),
     )
 
@@ -31,17 +30,12 @@ def build_parser() -> argparse.ArgumentParser:
 
     parser.add_argument(
         "--output-root",
-        help=(
-            "Investigation workspace root. "
-            "Generated results are stored locally."
-        ),
+        help="Investigation workspace root.",
     )
 
     parser.add_argument(
         "--case-name",
-        help=(
-            "Safe filename prefix for generated output."
-        ),
+        help="Safe filename prefix for generated output.",
     )
 
     parser.add_argument(
@@ -103,6 +97,7 @@ def main() -> int:
         "sha256": result["sha256"],
         "headers": result["headers"],
         "urls": result["urls"],
+        "indicators": result["indicators"],
     }
 
     if saved_files is not None:
