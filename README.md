@@ -60,10 +60,10 @@ Example:
 ```text
 C:\Security-Investigation\
 ├─ 01_Original_EML\
-├─ 02_Hashes\
-├─ 03_Extracted\
-├─ 04_Reports\
-└─ 05_Comparison\
+├─ 02_Hash_Records\
+├─ 03_Header_Text\
+├─ 04_RDAP\
+└─ 05_Report\
 ```
 
 The `01_Original_EML` directory should be treated as evidence storage.
