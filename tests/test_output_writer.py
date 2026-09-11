@@ -8,6 +8,7 @@ import unittest
 from pathlib import Path
 
 from phishing_evidence_analyzer.output_writer import (
+    rewrite_analysis_report,
     save_analysis_outputs,
     validate_case_name,
 )
@@ -444,6 +445,91 @@ class OutputWriterTests(unittest.TestCase):
                     "network_access_performed"
                 ]
             )
+
+
+    def test_report_can_be_rewritten_with_registration_summary(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            result = save_analysis_outputs(
+                analysis=SAMPLE_ANALYSIS,
+                investigation_root=temp_dir,
+                case_name="test-case",
+            )
+
+            registration_summary = {
+                "network_access_performed": True,
+                "domains": [
+                    {
+                        "source": "rdap",
+                        "registered_domain": "example.com",
+                        "observed_hosts": [
+                            "mail.example.com",
+                        ],
+                        "registrar": {
+                            "name": "Example Registrar",
+                        },
+                        "registration_events": [],
+                        "statuses": [
+                            "active",
+                        ],
+                        "nameservers": [
+                            "ns1.example.test",
+                        ],
+                    }
+                ],
+                "ip_addresses": [
+                    {
+                        "ip_address": "192.0.2.44",
+                        "rir": "Example RIR",
+                        "network": {
+                            "name": "EXAMPLE-NET",
+                            "start_address": "192.0.2.0",
+                            "end_address": "192.0.2.255",
+                        },
+                    }
+                ],
+                "errors": [],
+            }
+
+            rewritten_path = rewrite_analysis_report(
+                analysis=SAMPLE_ANALYSIS,
+                registration_summary=registration_summary,
+                investigation_root=temp_dir,
+                case_name="test-case",
+            )
+
+            self.assertEqual(
+                rewritten_path,
+                result["report"],
+            )
+
+            content = Path(
+                rewritten_path
+            ).read_text(
+                encoding="utf-8",
+            )
+
+            self.assertIn(
+                "## 外部登録情報",
+                content,
+            )
+
+            self.assertIn(
+                "Example Registrar",
+                content,
+            )
+
+            self.assertIn(
+                "Example RIR",
+                content,
+            )
+
+            self.assertNotIn(
+                r"C:\Sensitive\Original",
+                content,
+            )
+
 
 
 if __name__ == "__main__":

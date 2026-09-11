@@ -190,5 +190,140 @@ class ReportGeneratorTests(unittest.TestCase):
         )
 
 
+    def test_report_can_include_registration_summary(self) -> None:
+        registration_summary = {
+            "network_access_performed": True,
+            "domains": [
+                {
+                    "source": "rdap",
+                    "registered_domain": "example.com",
+                    "observed_hosts": [
+                        "mail.example.com",
+                    ],
+                    "registrar": {
+                        "name": "Example Registrar",
+                    },
+                    "registration_events": [
+                        {
+                            "action": "registration",
+                            "date": "2020-01-01T00:00:00Z",
+                        }
+                    ],
+                    "statuses": [
+                        "active",
+                    ],
+                    "nameservers": [
+                        "ns1.example.test",
+                    ],
+                },
+                {
+                    "source": "whois",
+                    "registered_domain": "example-registrant.it",
+                    "observed_hosts": [
+                        "host.example-registrant.it",
+                    ],
+                    "transport": "tcp/43",
+                    "encrypted": False,
+                    "registrar": {
+                        "name": "EXAMPLE-REG",
+                    },
+                    "registration_events": [],
+                    "statuses": [
+                        "ok",
+                    ],
+                    "nameservers": [
+                        "ns1.example.test",
+                    ],
+                },
+            ],
+            "ip_addresses": [
+                {
+                    "ip_address": "192.0.2.44",
+                    "rir": "Example RIR",
+                    "network": {
+                        "name": "EXAMPLE-NET",
+                        "start_address": "192.0.2.0",
+                        "end_address": "192.0.2.255",
+                    },
+                }
+            ],
+            "errors": [],
+        }
+
+        report = build_markdown_report(
+            SAMPLE_ANALYSIS,
+            "2026-09-11T00:00:00Z",
+            registration_summary,
+        )
+
+        self.assertIn(
+            "## 外部登録情報",
+            report,
+        )
+
+        self.assertIn(
+            "example-registrant.it",
+            report,
+        )
+
+        self.assertIn(
+            "tcp/43",
+            report,
+        )
+
+        self.assertIn(
+            "192.0.2.44",
+            report,
+        )
+
+        self.assertIn(
+            "Example RIR",
+            report,
+        )
+
+    def test_enriched_report_does_not_claim_no_external_network(
+        self,
+    ) -> None:
+        registration_summary = {
+            "network_access_performed": True,
+            "domains": [],
+            "ip_addresses": [],
+            "errors": [],
+        }
+
+        report = build_markdown_report(
+            SAMPLE_ANALYSIS,
+            "2026-09-11T00:00:00Z",
+            registration_summary,
+        )
+
+        self.assertNotIn(
+            "外部通信は行いません",
+            report,
+        )
+
+        self.assertIn(
+            "明示的に実行されたRDAPまたはWHOIS照会",
+            report,
+        )
+
+    def test_local_report_remains_local_only(self) -> None:
+        report = build_markdown_report(
+            SAMPLE_ANALYSIS,
+            "2026-09-11T00:00:00Z",
+        )
+
+        self.assertNotIn(
+            "## 外部登録情報",
+            report,
+        )
+
+        self.assertIn(
+            "外部通信は行いません",
+            report,
+        )
+
+
+
 if __name__ == "__main__":
     unittest.main()

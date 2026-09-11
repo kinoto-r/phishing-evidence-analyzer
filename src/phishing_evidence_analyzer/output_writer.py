@@ -365,6 +365,51 @@ def save_analysis_outputs(
         ),
     }
 
+
+def rewrite_analysis_report(
+    analysis: dict[str, Any],
+    registration_summary: dict[str, Any],
+    investigation_root: str | Path,
+    case_name: str,
+) -> str:
+    """Rewrite the report created earlier in the same analysis run."""
+
+    safe_case_name = validate_case_name(
+        case_name
+    )
+
+    root = Path(
+        investigation_root
+    ).expanduser().resolve()
+
+    report_path = (
+        root
+        / "05_Report"
+        / f"{safe_case_name}_report.md"
+    )
+
+    if not report_path.exists():
+        raise FileNotFoundError(
+            f"Analysis report does not exist: {report_path}"
+        )
+
+    recorded_at_utc = utc_timestamp()
+
+    report_content = build_markdown_report(
+        analysis,
+        recorded_at_utc,
+        registration_summary,
+    )
+
+    write_text_file(
+        report_path,
+        report_content,
+    )
+
+    return str(
+        report_path
+    )
+
 def get_rdap_enrichment_output_paths(
     investigation_root: str | Path,
     case_name: str,

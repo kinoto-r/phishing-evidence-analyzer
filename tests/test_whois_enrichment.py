@@ -322,5 +322,43 @@ class WhoisEnrichmentTests(
         )
 
 
+    def test_registration_summary_supports_rdap_only(
+        self,
+    ) -> None:
+        summary = build_registration_summary(
+            RDAP_ENRICHMENT
+        )
+
+        sources = {
+            item["source"]
+            for item in summary[
+                "domains"
+            ]
+        }
+
+        self.assertEqual(
+            sources,
+            {
+                "rdap",
+            },
+        )
+
+        self.assertTrue(
+            summary[
+                "network_access_performed"
+            ]
+        )
+
+        self.assertEqual(
+            len(
+                summary[
+                    "ip_addresses"
+                ]
+            ),
+            1,
+        )
+
+
+
 if __name__ == "__main__":
     unittest.main()

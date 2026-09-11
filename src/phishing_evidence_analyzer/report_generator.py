@@ -27,9 +27,333 @@ def code_value(
     return f"{TICK}{text}{TICK}"
 
 
+def append_registration_summary(
+    lines: list[str],
+    registration_summary: dict[str, Any],
+) -> None:
+    """Append normalized external registration information."""
+
+    lines.extend(
+        [
+            "## 外部登録情報",
+            "",
+            (
+                "このセクションは、明示的に実行された"
+                "RDAPまたはWHOIS照会の結果を整理したものです。"
+            ),
+            "",
+        ]
+    )
+
+    domains = registration_summary.get(
+        "domains",
+        [],
+    )
+
+    if domains:
+        lines.extend(
+            [
+                "### ドメイン登録情報",
+                "",
+                "| 登録ドメイン | 情報源 | Registrar | Status | Name Server |",
+                "| --- | --- | --- | --- | --- |",
+            ]
+        )
+
+        for domain in domains:
+            registrar = (
+                domain.get(
+                    "registrar"
+                )
+                or {}
+            )
+
+            registrar_name = (
+                registrar.get(
+                    "name"
+                )
+                or registrar.get(
+                    "organization"
+                )
+            )
+
+            statuses = domain.get(
+                "statuses",
+                [],
+            )
+
+            nameservers = domain.get(
+                "nameservers",
+                [],
+            )
+
+            lines.append(
+                "| "
+                + code_value(
+                    domain.get(
+                        "registered_domain"
+                    )
+                )
+                + " | "
+                + code_value(
+                    domain.get(
+                        "source"
+                    )
+                )
+                + " | "
+                + code_value(
+                    registrar_name
+                )
+                + " | "
+                + code_value(
+                    ", ".join(
+                        statuses
+                    )
+                    if statuses
+                    else None
+                )
+                + " | "
+                + code_value(
+                    ", ".join(
+                        nameservers
+                    )
+                    if nameservers
+                    else None
+                )
+                + " |"
+            )
+
+        lines.append("")
+
+        for domain in domains:
+            registered_domain = domain.get(
+                "registered_domain"
+            )
+
+            lines.extend(
+                [
+                    (
+                        "#### "
+                        + str(
+                            registered_domain
+                            or "（不明）"
+                        )
+                    ),
+                    "",
+                    (
+                        "- 情報源: "
+                        + code_value(
+                            domain.get(
+                                "source"
+                            )
+                        )
+                    ),
+                ]
+            )
+
+            observed_hosts = domain.get(
+                "observed_hosts",
+                [],
+            )
+
+            if observed_hosts:
+                lines.append(
+                    "- 観測ホスト: "
+                    + ", ".join(
+                        code_value(
+                            host
+                        )
+                        for host in observed_hosts
+                    )
+                )
+
+            events = domain.get(
+                "registration_events",
+                [],
+            )
+
+            if events:
+                lines.extend(
+                    [
+                        "",
+                        "| Event | Date |",
+                        "| --- | --- |",
+                    ]
+                )
+
+                for event in events:
+                    lines.append(
+                        "| "
+                        + code_value(
+                            event.get(
+                                "action"
+                            )
+                        )
+                        + " | "
+                        + code_value(
+                            event.get(
+                                "date"
+                            )
+                        )
+                        + " |"
+                    )
+
+            if domain.get(
+                "source"
+            ) == "whois":
+                lines.extend(
+                    [
+                        "",
+                        (
+                            "- WHOIS transport: "
+                            + code_value(
+                                domain.get(
+                                    "transport"
+                                )
+                            )
+                        ),
+                        (
+                            "- WHOIS encrypted: "
+                            + code_value(
+                                domain.get(
+                                    "encrypted"
+                                )
+                            )
+                        ),
+                    ]
+                )
+
+            lines.append("")
+
+    else:
+        lines.extend(
+            [
+                "ドメイン登録情報は取得されませんでした。",
+                "",
+            ]
+        )
+
+    ip_addresses = registration_summary.get(
+        "ip_addresses",
+        [],
+    )
+
+    if ip_addresses:
+        lines.extend(
+            [
+                "### IPアドレス登録情報",
+                "",
+            ]
+        )
+
+        for item in ip_addresses:
+            network = (
+                item.get(
+                    "network"
+                )
+                or {}
+            )
+
+            start_address = network.get(
+                "start_address"
+            )
+
+            end_address = network.get(
+                "end_address"
+            )
+
+            network_range = None
+
+            if (
+                start_address
+                and end_address
+            ):
+                network_range = (
+                    f"{start_address} - {end_address}"
+                )
+
+            lines.extend(
+                [
+                    (
+                        "#### "
+                        + str(
+                            item.get(
+                                "ip_address"
+                            )
+                            or "（不明）"
+                        )
+                    ),
+                    "",
+                    (
+                        "- RIR: "
+                        + code_value(
+                            item.get(
+                                "rir"
+                            )
+                        )
+                    ),
+                    (
+                        "- Network name: "
+                        + code_value(
+                            network.get(
+                                "name"
+                            )
+                        )
+                    ),
+                    (
+                        "- Network range: "
+                        + code_value(
+                            network_range
+                        )
+                    ),
+                    "",
+                ]
+            )
+
+    else:
+        lines.extend(
+            [
+                "IPアドレス登録情報は取得されませんでした。",
+                "",
+            ]
+        )
+
+    errors = registration_summary.get(
+        "errors",
+        [],
+    )
+
+    if errors:
+        lines.extend(
+            [
+                "### 外部照会エラー",
+                "",
+            ]
+        )
+
+        for error in errors:
+            lines.append(
+                "- "
+                + code_value(
+                    error.get(
+                        "target"
+                    )
+                )
+                + ": "
+                + code_value(
+                    error.get(
+                        "error"
+                    )
+                )
+            )
+
+        lines.append("")
+
+
 def build_markdown_report(
     analysis: dict[str, Any],
     recorded_at_utc: str,
+    registration_summary: dict[str, Any] | None = None,
 ) -> str:
     """Build a human-readable Japanese Markdown analysis report."""
 
@@ -173,6 +497,12 @@ def build_markdown_report(
             ]
         )
 
+    if registration_summary is not None:
+        append_registration_summary(
+            lines,
+            registration_summary,
+        )
+
     lines.extend(
         [
             "## 観測事項",
@@ -192,16 +522,41 @@ def build_markdown_report(
                 "本ツールは抽出したURLを開いたり、HTTP/HTTPSリクエストを送信したりしません。"
             ),
             (
-                "- 本レポート生成処理では、DNS照会、RDAP照会、"
-                "レピュテーションサービスへの照会、ブラウザーアクセスなどの"
-                "外部通信は行いません。"
+                (
+                    "- 本レポート生成処理では、DNS照会、RDAP照会、"
+                    "レピュテーションサービスへの照会、ブラウザーアクセスなどの"
+                    "外部通信は行いません。"
+                )
+                if registration_summary is None
+                else (
+                    "- 外部登録情報には、明示的に実行された"
+                    "RDAPまたはWHOIS照会の結果が含まれます。"
+                    "メール本文中のURLへのアクセスや、"
+                    "レピュテーションサービスへの照会は行っていません。"
+                )
             ),
             "",
             "## 解析範囲",
             "",
-            "本レポートは、ローカル環境で実施した静的解析の結果のみを記録しています。",
+            (
+                "本レポートは、ローカル環境で実施した"
+                "静的解析の結果のみを記録しています。"
+                if registration_summary is None
+                else (
+                    "本レポートは、ローカル静的解析結果と、"
+                    "明示的に実行された登録情報照会結果を記録しています。"
+                )
+            ),
             "",
-            "必要に応じた外部調査は、本ツールのローカル解析とは分離して実施してください。",
+            (
+                "必要に応じた外部調査は、本ツールのローカル解析とは"
+                "分離して実施してください。"
+                if registration_summary is None
+                else (
+                    "登録情報は、送信元やリンク先の所有・運用主体、"
+                    "またはメールの正当性を単独で証明するものではありません。"
+                )
+            ),
             "",
         ]
     )

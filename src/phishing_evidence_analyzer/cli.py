@@ -12,6 +12,7 @@ from phishing_evidence_analyzer.analyzer import (
 from phishing_evidence_analyzer.output_writer import (
     ensure_rdap_enrichment_outputs_available,
     ensure_whois_outputs_available,
+    rewrite_analysis_report,
     save_analysis_outputs,
     save_rdap_enrichment_outputs,
     save_whois_outputs,
@@ -162,6 +163,12 @@ def main() -> int:
                 rdap_enrichment
             )
 
+            registration_summary = (
+                build_registration_summary(
+                    rdap_enrichment
+                )
+            )
+
             rdap_saved_files = (
                 save_rdap_enrichment_outputs(
                     analysis=result,
@@ -224,6 +231,22 @@ def main() -> int:
                 saved_files.update(
                     whois_saved_files
                 )
+
+        if (
+            args.rdap
+            and registration_summary is not None
+        ):
+            report_path = rewrite_analysis_report(
+                analysis=result,
+                registration_summary=registration_summary,
+                investigation_root=args.output_root,
+                case_name=args.case_name,
+            )
+
+            if saved_files is not None:
+                saved_files[
+                    "report"
+                ] = report_path
 
     except (
         FileExistsError,

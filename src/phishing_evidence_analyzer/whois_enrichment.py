@@ -180,9 +180,14 @@ def enrich_whois_fallback(
 
 def build_registration_summary(
     rdap_enrichment: dict[str, Any],
-    whois_enrichment: dict[str, Any],
+    whois_enrichment: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Combine RDAP and WHOIS results into one normalized summary."""
+    """Combine RDAP and optional WHOIS results."""
+
+    whois_data = (
+        whois_enrichment
+        or {}
+    )
 
     domains: list[
         dict[str, Any]
@@ -223,7 +228,7 @@ def build_registration_summary(
             }
         )
 
-    for item in whois_enrichment.get(
+    for item in whois_data.get(
         "domain_results",
         [],
     ):
@@ -309,7 +314,7 @@ def build_registration_summary(
 
     resolved_whois_targets = {
         observed_host
-        for item in whois_enrichment.get(
+        for item in whois_data.get(
             "domain_results",
             [],
         )
@@ -353,7 +358,7 @@ def build_registration_summary(
                 "network_access_performed",
                 False,
             )
-            or whois_enrichment.get(
+            or whois_data.get(
                 "network_access_performed",
                 False,
             )
@@ -365,7 +370,7 @@ def build_registration_summary(
         ),
         "errors": (
             unresolved_rdap_errors
-            + whois_enrichment.get(
+            + whois_data.get(
                 "errors",
                 [],
             )
